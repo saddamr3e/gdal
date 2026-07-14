@@ -1452,6 +1452,60 @@ def test_jpeg_flir_raw(tmp_vsimem):
 
 
 ###############################################################################
+# A FLIR record whose (offset + length) wraps around 32 bits used to pass the
+# bounds check and drive an out-of-bounds read. Reading the FLIR metadata must
+# reject the record instead of crashing.
+
+
+def test_jpeg_flir_record_offset_overflow(tmp_vsimem):
+
+    data = bytearray(open("data/jpeg/flir/FLIR.jpg", "rb").read())
+
+    # Find the FLIR APP1 segment and the start of its payload (abyFLIR).
+    i = 2
+    flir_payload_off = None
+    while i < len(data) - 1:
+        if data[i] != 0xFF:
+            i += 1
+            continue
+        marker = data[i + 1]
+        if marker in (0xD8, 0xD9, 0x01) or 0xD0 <= marker <= 0xD7:
+            i += 2
+            continue
+        if marker == 0xDA:
+            break
+        seglen = struct.unpack(">H", data[i + 2 : i + 4])[0]
+        if marker == 0xE1 and data[i + 4 : i + 9] == b"FLIR\x00":
+            # 8 header bytes: "FLIR\0" + '\1' + chunk_idx + chunk_count
+            flir_payload_off = i + 4 + 8
+            break
+        i += 2 + seglen
+
+    assert flir_payload_off is not None
+
+    # Record directory (big endian): offset at abyFLIR[24], count at [28].
+    off = flir_payload_off
+    dir_off = struct.unpack(">I", data[off + 24 : off + 28])[0]
+    dir_cnt = struct.unpack(">I", data[off + 28 : off + 32])[0]
+
+    # Point the first RawData (type 1) record at an offset near 2^32 with a
+    # length that makes offset + length wrap back into the segment.
+    patched = False
+    for r in range(dir_cnt):
+        base = off + dir_off + 32 * r
+        if struct.unpack(">H", data[base : base + 2])[0] == 1:
+            struct.pack_into(">I", data, base + 12, 0xFFFFFFE0)
+            struct.pack_into(">I", data, base + 16, 0x40)
+            patched = True
+            break
+    assert patched
+
+    gdal.FileFromMemBuffer(tmp_vsimem / "tmp.jpg", bytes(data))
+    with gdal.Open(tmp_vsimem / "tmp.jpg") as ds:
+        assert ds.GetMetadata("FLIR") is not None
+
+
+###############################################################################
 
 
 def test_jpeg_flir_error_flir_subds():

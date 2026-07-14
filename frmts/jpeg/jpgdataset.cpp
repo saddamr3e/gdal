@@ -883,7 +883,8 @@ void JPGDatasetCommon::ReadFLIRMetadata()
     const auto ReadRawData =
         [&](std::uint32_t nRecOffset, std::uint32_t nRecLength)
     {
-        if (!(nRecLength >= 32 && nRecOffset + nRecLength <= abyFLIR.size()))
+        if (!(nRecLength >= 32 &&
+              static_cast<size_t>(nRecOffset) + nRecLength <= abyFLIR.size()))
             return;
 
         const int nByteOrder = ReadUInt16(nRecOffset);
@@ -923,7 +924,8 @@ void JPGDatasetCommon::ReadFLIRMetadata()
     const auto ReadEmbeddedImage =
         [&](std::uint32_t nRecOffset, std::uint32_t nRecLength)
     {
-        if (!(nRecLength >= 32 && nRecOffset + nRecLength <= abyFLIR.size()))
+        if (!(nRecLength >= 32 &&
+              static_cast<size_t>(nRecOffset) + nRecLength <= abyFLIR.size()))
             return;
 
         const int nByteOrder = ReadUInt16(nRecOffset);
@@ -957,7 +959,8 @@ void JPGDatasetCommon::ReadFLIRMetadata()
     const auto ReadCameraInfo =
         [&](std::uint32_t nRecOffset, std::uint32_t nRecLength)
     {
-        if (!(nRecLength >= 1126 && nRecOffset + nRecLength <= abyFLIR.size()))
+        if (!(nRecLength >= 1126 &&
+              static_cast<size_t>(nRecOffset) + nRecLength <= abyFLIR.size()))
             return;
 
         const int nByteOrder = ReadUInt16(nRecOffset);
@@ -1105,7 +1108,8 @@ void JPGDatasetCommon::ReadFLIRMetadata()
     const auto ReadPaletteInfo =
         [&](std::uint32_t nRecOffset, std::uint32_t nRecLength)
     {
-        if (!(nRecLength >= 112 && nRecOffset + nRecLength <= abyFLIR.size()))
+        if (!(nRecLength >= 112 &&
+              static_cast<size_t>(nRecOffset) + nRecLength <= abyFLIR.size()))
             return;
         const int nPaletteColors = abyFLIR[nRecOffset];
         SetMetadataItem("PaletteColors", CPLSPrintf("%d", nPaletteColors),
@@ -1151,7 +1155,8 @@ void JPGDatasetCommon::ReadFLIRMetadata()
     const auto ReadGPSInfo =
         [&](std::uint32_t nRecOffset, std::uint32_t nRecLength)
     {
-        if (!(nRecLength >= 104 && nRecOffset + nRecLength <= abyFLIR.size()))
+        if (!(nRecLength >= 104 &&
+              static_cast<size_t>(nRecOffset) + nRecLength <= abyFLIR.size()))
             return;
         auto nGPSValid = ReadUInt32(nRecOffset);
         if (nGPSValid == 0x01000000)
@@ -1212,7 +1217,7 @@ void JPGDatasetCommon::ReadFLIRMetadata()
             continue;  // silently keep empty records of type 0
         CPLDebugOnly("JPEG", "FLIR: record %u, type %u, offset %u, length %u",
                      iRec, nRecType, nRecOffset, nRecLength);
-        if (nRecOffset + nRecLength > abyFLIR.size())
+        if (static_cast<size_t>(nRecOffset) + nRecLength > abyFLIR.size())
         {
             CPLDebug("JPEG",
                      "Invalid record %u, type %u, offset %u, length %u "
